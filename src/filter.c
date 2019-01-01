@@ -71,12 +71,13 @@ int filter_re_create(filter_t** filter, const char* re, filter_t* next_filter) {
 
 bool filter_exec(filter_t* filter, const char* input, int input_len) {
     filter_common_t* cf = (filter_common_t*)filter;
-    bool ret = true;
     while (cf != NULL) {
-        ret &= cf->filter(filter, input, input_len);
+        if (!cf->filter(filter, input, input_len)) {
+            return false;
+        }
         cf = (filter_common_t*)cf->next;
     }
-    return ret;
+    return true;
 }
 
 void filter_free(filter_t* filter) {
