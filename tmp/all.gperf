@@ -1,0 +1,17 @@
+%language=ANSI-C
+%define constants-prefix METRIC_
+%define hash-function-name hash_metric_name
+%define lookup-function-name lookup_metric
+%compare-lengths
+%readonly-tables
+%includes
+%struct-type
+
+struct month { const char *name; const int metric; };
+%%
+"c",  0
+"ms", 1
+"kv", 2
+"g",  3
+"h",  4
+"s",  5

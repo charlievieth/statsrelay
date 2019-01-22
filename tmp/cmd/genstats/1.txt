@@ -1,0 +1,6 @@
+goos: darwin
+goarch: amd64
+pkg: github.com/lyft/statsrelay/tmp/cmd/genstats
+BenchmarkGauge-8   	 2000000	       737 ns/op
+PASS
+ok  	github.com/lyft/statsrelay/tmp/cmd/genstats	4.107s
