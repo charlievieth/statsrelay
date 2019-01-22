@@ -21,7 +21,7 @@ static void print_help(const char *argv0) {
 }
 
 int main(int argc, char **argv) {
-    char *config_name = (char *) default_config;
+    const char *config_name = default_config;
     bool process_self_stats = false;
     char c = 0;
     while (c != -1) {

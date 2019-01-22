@@ -127,12 +127,20 @@ static void tcplistener_accept_callback(struct ev_loop *loop,
     listener = (tcplistener_t *) watcher->data;
     session = tcpsession_create(listener);
     if (session == NULL) {
+        // WARN (CEV): exit here ???
         stats_error_log("tcplistener: Unable to allocate tcpsession, not calling accept()");
         return;
     }
 
     sin_size = sizeof(session->client_addr);
 
+    // WARN (CEV): "Too many open files" caused this to enter a hot retry
+    // loop that resulted in OOM.  This was triggered by a service that
+    // leaked gostats.Store goroutines.
+    //
+    // Figure out if we are leaking file descriptors as well (likely it was
+    // the service that consumed them, bet we should double check).
+    //
     session->sd = accept(watcher->fd, (struct sockaddr *)&session->client_addr, &sin_size);
     if (session->sd < 0) {
         stats_error_log("tcplistener: Error accepting connection: %s", strerror(errno));

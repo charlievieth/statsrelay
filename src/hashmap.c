@@ -3,9 +3,12 @@
 #include "hashmap.h"
 #include "hashlib.h"
 
+// TODO (CEV): redefine as MAX_CAPACITY (n) (((n) * 4) / 3)
 #define MAX_CAPACITY 0.75
 #define DEFAULT_CAPACITY 128
 
+// TODO (CEV): add key_len for faster comparisons
+//
 // Basic hash entry.
 typedef struct hashmap_entry {
     size_t key_len;
@@ -35,6 +38,7 @@ int hashmap_init(int initial_size, hashmap **map) {
 
         // Round up to power of 2
     } else {
+        // CEV: this looks lazy
         int most_sig_bit = 0;
         for (int idx = 0; idx < sizeof(initial_size) * 8; idx++) {
             if ((initial_size >> idx) & 0x1)
@@ -153,6 +157,7 @@ int hashmap_get(hashmap *map, const char *key, void **value) {
     return -1;
 }
 
+// TODO (CEV): remove 'should_cmp' and make two separate functions
 /**
  * Internal method to insert into a hash table
  * @arg table The table to insert into
@@ -469,3 +474,29 @@ int hashmap_iter(hashmap *map, hashmap_callback cb, void *data) {
     }
     return should_break;
 }
+
+// TODO (CEV): use this instead (WARN: delete needs to be updated)
+/*
+int hashmap_iter_2(hashmap *map, hashmap_callback cb, void *data) {
+    for (int i = 0; i < map->table_size; i++) {
+        hashmap_entry *last_entry = NULL;
+        hashmap_entry *entry = map->table + i;
+        while (entry != NULL && entry->key) {
+            int cb_ret = cb(data, entry->key, entry->value, entry->metadata);
+            switch (cb_ret) {
+            case HASHMAP_ITER_DELETE:
+                hashmap_iter_delete(map, entry, last_entry);
+                break;
+            case HASHMAP_ITER_CONTINUE:
+                // Move last_entry to allow removals in the list
+                last_entry = entry;
+                entry = entry->next;
+                break;
+            case HASHMAP_ITER_STOP:
+                return HASHMAP_ITER_STOP;
+            }
+        }
+    }
+    return HASHMAP_ITER_CONTINUE;
+}
+*/

@@ -21,8 +21,8 @@ typedef struct {
     struct ev_io *watcher;
     list_t clients;
     void *data;
-    void *(*cb_conn)(int, void *);
-    int (*cb_recv)(int, void *, void *);
+    void *(*cb_conn)(int, void *); // CEV: always 'stats_connection'
+    int (*cb_recv)(int, void *, void *); // CEV: always 'stats_recv'
 }tcplistener_t;
 
 // tcpserver_t represents an event loop bound to multiple sockets

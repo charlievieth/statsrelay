@@ -33,6 +33,10 @@ char *buffer_tail(buffer_t *);
 // Doubles the size of the buffer
 int buffer_expand(buffer_t *);
 
+// Grows the buffers capacity, if necessary, to to guarantee space for
+// another n bytes
+int buffer_grow(buffer_t *, size_t);
+
 // Expands the buffer to the given size
 int buffer_newsize(buffer_t *b, size_t newsize);
 
@@ -49,11 +53,20 @@ int buffer_produced(buffer_t *, size_t);
 // Sets to the new contents, expanding if necessary
 int buffer_set(buffer_t *, const char *data, size_t size); // UNUSED
 
+// CEV: this is only used for tests - delete
+//
 // Append data to the buffer, rejects if not enough space
 int buffer_append(buffer_t *, const char *data, size_t size); // UNUSED - only used in test_buffer
 
+// CEV: looks like this clears the buffer
+//
 // Copy data from head to the beginning of the buffer
 int buffer_realign(buffer_t *);
+
+// CEV: replace append with this
+//
+// Writes s to the buffer, growing if necessary
+int buffer_write(buffer_t *, const char *restrict, size_t);
 
 // Frees all memory associated with the buffer
 void buffer_destroy(buffer_t *);

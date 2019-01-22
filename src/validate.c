@@ -18,7 +18,20 @@ static const int valid_stat_types_len = 6;
 // there by a GNU extention:
 // "The memrchr() function  is  a  GNU  extension,  available  since  glibc 2.1.91."
 // (http://manpages.ubuntu.com/manpages/xenial/man3/memchr.3.html)
-extern void *memrchr(const void*, int, size_t);
+// extern void *memrchr(const void*, int, size_t);
+//
+// WARN (CEV): slow memrchr since memrchr is not availabvle on macOS
+static void * memrchr(const void *s, int c_in, size_t n) {
+    const unsigned char c = (const unsigned char)c_in;
+    const unsigned char *p = (const unsigned char *)s;
+    p += n;
+    while (n--) {
+        if (*--p == c) {
+            return (void *)p;
+        }
+    }
+    return NULL;
+}
 
 static metric_type parse_stat_type(const char *str, size_t len) {
     if (1 <= len && len <= 2) {
@@ -42,11 +55,11 @@ int validate_statsd(const char *line, size_t len, validate_parsed_result_t* resu
     //                                      ^^^^--- actual value
     const char *end = memrchr(start, ':', plen);
     if (end == NULL) {
-        stats_log("validate: Invalid line \"%.*s\" missing ':'", len, line);
+        stats_log("validate: Invalid line \"%.*s\" missing ':'", (int)len, line);
         return 1;
     }
     if ((end - start) < 1) {
-        stats_log("validate: Invalid line \"%.*s\" zero length key", len, line);
+        stats_log("validate: Invalid line \"%.*s\" zero length key", (int)len, line);
         return 1;
     }
     start = end + 1;
@@ -55,13 +68,14 @@ int validate_statsd(const char *line, size_t len, validate_parsed_result_t* resu
     char *err;
     result->value = strtod(start, &err);
     if (result->value == 0 && err == start) {
-        stats_log("validate: Invalid line \"%.*s\" unable to parse value as double", len, line);
+        stats_log("validate: Invalid line \"%.*s\" unable to parse value as double",
+            (int)len, line);
         return 1;
     }
 
     end = memchr(start, '|', plen);
     if (end == NULL) {
-        stats_log("validate: Invalid line \"%.*s\" missing '|'", len, line);
+        stats_log("validate: Invalid line \"%.*s\" missing '|'", (int)len, line);
         return 1;
     }
     start = end + 1;
@@ -74,7 +88,8 @@ int validate_statsd(const char *line, size_t len, validate_parsed_result_t* resu
 
     result->type = parse_stat_type(start, plen);
     if (result->type < 0) {
-        stats_log("validate: Invalid line \"%.*s\" unknown stat type \"%.*s\"", len, line, plen, start);
+        stats_log("validate: Invalid line \"%.*s\" unknown stat type \"%.*s\"",
+            (int)len, line, (int)plen, start);
         return 1;
     }
 

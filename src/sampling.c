@@ -162,6 +162,7 @@ static int sampler_update_callback(void* _s, const char* key, void* _value, void
     return 0;
 }
 
+// CEV: hashmap_iter callback for removing stale entries
 static int expiry_callback(void* _s, const char* key, void* _value, void *metadata) {
     sampler_t* sampler = (sampler_t*)_s;
     struct sample_bucket* bucket = (struct sample_bucket*)_value;
@@ -384,6 +385,9 @@ sampling_result sampler_consider_timer(sampler_t* sampler, const char* name, val
     struct sample_bucket* bucket = NULL;
     hashmap_get(sampler->map, name, (void**)&bucket);
     if (bucket == NULL) {
+        // WARN (CEV): this showed up in a lot of logs, figure out if it
+        // is an error or not.
+        //
         // Only flag if its a new metric
         if (flag_incoming_metric(sampler)) {
             stats_error_log("flagging timer: %s", name);

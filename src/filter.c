@@ -42,6 +42,7 @@ static bool re_match(filter_t* filter, const char* input, int input_len) {
                 return false;
         }
     }
+    // WARN (CEV): dead code ???
     if (rc == 0)
         rc = OVECCOUNT/3; /* Output overflow - truncate to max size instead of zero */
 

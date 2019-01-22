@@ -31,7 +31,7 @@ void* statsrelay_list_expand(list_t list) {
             void *newdata = realloc(
                     list->data, sizeof(void *) * list->allocated_size);
             if (newdata == NULL) {
-                perror("realloc()");
+                perror("realloc()"); // WARN (CEV): I don't think this sets ERRNO
                 return NULL;
             }
             list->data = newdata;

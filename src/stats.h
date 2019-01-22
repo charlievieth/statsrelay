@@ -90,7 +90,7 @@ struct stats_server_t {
 	stats_backend_t **backend_list;
 
 	list_t rings;
-	protocol_parser_t parser;
+	protocol_parser_t parser; // TODO (CEV): remove its always 'protocol_parser_statsd'
 	validate_line_validator_t validator;
 
 	/** Maintain unique ring for monitoring stats */

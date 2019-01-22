@@ -13,6 +13,9 @@ static void init_server(struct server *server) {
     server->us = NULL;
 }
 
+// TODO (CEV):
+//  * server entry point
+//  * the parser is always 'protocol_parser_statsd'
 static bool connect_server(struct server *server,
         struct proto_config *config,
         protocol_parser_t parser,
@@ -32,6 +35,7 @@ static bool connect_server(struct server *server,
 
     struct ev_loop *loop = ev_default_loop(0);
 
+    // CEV: create stats server
     server->server = stats_server_create(
             loop, config, parser, validator);
 
@@ -131,6 +135,7 @@ void init_server_collection(struct server_collection *server_collection,
     init_server(&server_collection->statsd_server);
 }
 
+// CEV: configure server here
 bool connect_server_collection(struct server_collection *server_collection,
         struct config *config) {
     bool enabled_any = false;

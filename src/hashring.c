@@ -80,6 +80,7 @@ size_t hashring_size(hashring_t ring) {
     return ring->backends->size;
 }
 
+// TODO (CEV): add key_len argument (since we almost always know it).
 hashring_hash_t hashring_hash(const char* key) {
     return stats_hash_key(key, strlen(key));
 }

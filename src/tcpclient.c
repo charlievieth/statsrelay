@@ -41,6 +41,7 @@ static void tcpclient_set_state(tcpclient_t *client, enum tcpclient_state state)
     client->state = state;
 }
 
+// TODO (CEV): remove unused events argument
 static void tcpclient_connect_timeout(struct ev_loop *loop, struct ev_timer *watcher, int events) {
     tcpclient_t *client = (tcpclient_t *)watcher->data;
     if (client->connect_watcher.started) {
@@ -84,10 +85,10 @@ int tcpclient_init(tcpclient_t *client,
     client->socktype = SOCK_DGRAM;
     strncpy(client->name, "UNRESOLVED", TCPCLIENT_NAME_LEN);
 
-    client->host = strdup(host);
-    client->port = strdup(port);
+    client->host = strdup(host); // WARN (CEV): unchecked strdup()
+    client->port = strdup(port); // WARN (CEV): unchecked strdup()
     if (protocol)
-        client->protocol = strdup(protocol);
+        client->protocol = strdup(protocol); // WARN (CEV): unchecked strdup()
     else
         client->protocol = NULL;
 
@@ -122,6 +123,7 @@ static void tcpclient_read_event(struct ev_loop *loop, struct ev_io *watcher, in
         return;
     }
 
+    // CEV: this is a lot to allocate each time we're called
     buf = malloc(TCPCLIENT_RECV_BUFFER);
     if (buf == NULL) {
         stats_error_log("tcpclient[%s]: Unable to allocate memory for receive buffer", client->name);
@@ -188,6 +190,7 @@ static void tcpclient_write_event(struct ev_loop *loop, struct ev_io *watcher, i
                This is largely a hack as tcpclient is unaware of the underlying protocol framing
                and can't handle errant conditions on a frame by frame basis.
             */
+            // WARN (CEV): we never check if '\n' is found
             buffer_consume_until(sendq, '\n');
             client->callback_error(client, EVENT_ERROR, client->callback_context, NULL, 0);
             return;
@@ -382,6 +385,8 @@ void tcpclient_disconnect(tcpclient_t *client) {
 int tcpclient_sendall(tcpclient_t *client, const char *buf, size_t len) {
     buffer_t *sendq = &client->send_queue;
 
+    // WARN (CEV): return code not checked
+    //
     // Does nothing if we're already connected, triggers a
     // reconnect if backoff has expired.
     tcpclient_connect(client);
@@ -391,7 +396,10 @@ int tcpclient_sendall(tcpclient_t *client, const char *buf, size_t len) {
             tcpclient_disconnect(client);
         }
         return 1;
-    } else if (buffer_datacount(&client->send_queue) >= client->config->max_send_queue) {
+    }
+    // CEV: there was no reason for the 'else if' statement here
+    // since the above 'if' statement always exits the procedure.
+    if (buffer_datacount(&client->send_queue) >= client->config->max_send_queue) {
         if (client->failing == 0) {
             stats_debug_log("tcpclient[%s]: send queue for %s client is full (at %zd bytes, max is %" PRIu64 " bytes), dropping data",
                     client->name,
@@ -402,6 +410,8 @@ int tcpclient_sendall(tcpclient_t *client, const char *buf, size_t len) {
         }
         return 2;
     }
+
+    // TODO (CEV): replace this block with buffer_grow
     if (buffer_spacecount(sendq) < len) {
         if (buffer_realign(sendq) != 0) {
             stats_error_log("tcpclient[%s]: Unable to realign send queue", client->name);
@@ -409,14 +419,24 @@ int tcpclient_sendall(tcpclient_t *client, const char *buf, size_t len) {
         }
     }
     while (buffer_spacecount(sendq) < len) {
+        // WARN (CEV): this looks like it could be the source of the
+        // bug reported in #77 (commit: 'a43308d2d')
         if (buffer_expand(sendq) != 0) {
             stats_error_log("tcpclient[%s]: Unable to allocate additional memory for send queue, dropping data", client->name);
             return 4;
         }
     }
+
+    // TODO (CEV): use a buffer_append function
     memcpy(buffer_tail(sendq), buf, len);
     buffer_produced(sendq, len);
 
+    // TODO (CEV): investigate this under Linux
+    //
+    // Notes: not sure about this, but do we really want kick ev_io on every
+    // write - this may be expensive and eliminate any outbound buffering we
+    // have in place.
+    //
     if (client->state == STATE_CONNECTED) {
         client->write_watcher.started = true;
         ev_io_start(client->loop, &client->write_watcher.watcher);

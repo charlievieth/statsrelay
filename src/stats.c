@@ -302,6 +302,7 @@ static void group_prefix_create(struct additional_config* config, stats_backend_
 
 }
 
+// TODO (CEV): too many low-level buffer ops - fix this
 static void flush_cluster_stats(struct ev_loop *loop, struct ev_timer *watcher, int events) {
     ev_tstamp timeout = 30.0;
     stats_server_t *server= (stats_server_t *)watcher->data;
@@ -442,7 +443,9 @@ reset_timer:
     ev_timer_start(server->loop, &server->stats_flusher);
 }
 
-
+// CEV: sampler_flush callback used by 'sampler_flush_callback' as well
+// a lot of this is setup from 'connect_server'
+//
 /*
  * Receive a line from the flusher and send it on
  */
@@ -662,6 +665,7 @@ size_t stats_num_backends(stats_server_t *server) {
     return server->num_backends;
 }
 
+// CEV: tcplistener_t->cb_conn is always this
 void *stats_connection(int sd, void *ctx) {
     stats_session_t *session;
 
@@ -697,11 +701,15 @@ static void stats_write_to_backend(const char *line,
         return;
     }
 
+    // WARN (CEV): discards const qualifier
+    //
     /* Allow the line to be modified if needed */
     char* linebuf = (char*)line;
     int send_len = len;
 
     if (group->prefix != NULL || group->suffix != NULL) {
+        // TODO (CEV): this is a large buffer to statically allocate
+        // can we just modify the line in-place?
         static char prefix_line_buffer[MAX_UDP_LENGTH + 1];
         linebuf = prefix_line_buffer;
         linebuf[0] = '\0';
@@ -747,6 +755,9 @@ static void stats_write_to_backend(const char *line,
 
 static int stats_relay_line(const char *line, size_t len, stats_server_t *ss, bool send_to_monitor_cluster) {
     validate_parsed_result_t parsed_result;
+    // TODO (CEV): the 'validator' never changes and this is a really
+    // hot section - we should remove the '->validator' member and
+    // directly call the function.
     if (ss->config->enable_validation && ss->validator != NULL) {
         if (ss->validator(line, len, &parsed_result) != 0) {
             return 1;
@@ -754,15 +765,19 @@ static int stats_relay_line(const char *line, size_t len, stats_server_t *ss, bo
     }
 
     static char key_buffer[KEY_BUFFER];
+    // TODO (CEV): again this is a hot section and the 'parser' never
+    // changes - call it directly.
     size_t key_len = ss->parser(line, len);
     if (key_len == 0) {
         ss->malformed_lines++;
         stats_log("stats: failed to find key: \"%s\"", line);
         return 1;
     }
+    // WARN (CEV): key_len >= KEY_BUFFER is never checked
     memcpy(key_buffer, line, key_len);
     key_buffer[key_len] = '\0';
 
+    // TODO (CEV): this can be done later
     hashring_hash_t key_hash = hashring_hash(key_buffer);
 
     size_t ring_size = send_to_monitor_cluster ? ss->monitor_ring->size : ss->rings->size;
@@ -811,6 +826,7 @@ static int stats_relay_line(const char *line, size_t len, stats_server_t *ss, bo
                 r = sampler_consider_gauge(group->gauge_sampler, key_buffer, &parsed_result);
             }
         }
+        // TODO (CEV): use switch statement
         if (r == SAMPLER_FLAGGED) {
             group->flagged_lines++;
             continue;
@@ -823,6 +839,9 @@ static int stats_relay_line(const char *line, size_t len, stats_server_t *ss, bo
     return 0;
 }
 
+// CEV:
+//  * this monster is called when stats a requested via "stats\n"
+//  * called by 'stats_process_lines'
 void stats_send_statistics(stats_session_t *session) {
     stats_backend_t *backend;
     ssize_t bytes_sent;
@@ -929,10 +948,16 @@ void stats_send_statistics(stats_session_t *session) {
     delete_buffer(response);
 }
 
+// TODO (CEV): we really need a buffer_{get,iter}_lines() function
 static int stats_process_lines(stats_session_t *session) {
     char *head, *tail;
     size_t len;
 
+    // TODO (CEV): add a line buffer to stats_session_t
+    // instead of stack allocating this each call
+    //
+    // We can maybe use KEY_BUFFER here as the size since
+    // that is what stats_relay_line uses.
     static char line_buffer[MAX_UDP_LENGTH + 2];
 
     while (1) {
@@ -945,6 +970,7 @@ static int stats_process_lines(stats_session_t *session) {
         if (tail == NULL) {
             break;
         }
+        // WARN (CEV): bounds not checked
         len = tail - head;
         memcpy(line_buffer, head, len);
         memcpy(line_buffer + len, "\n\0", 2);
@@ -954,6 +980,7 @@ static int stats_process_lines(stats_session_t *session) {
         } else if (stats_relay_line(line_buffer, len, session->server, false) != 0) {
             return 1;
         }
+        // TODO (CEV): why isn't this done earlier?
         buffer_consume(&session->buffer, len + 1);	// Add 1 to include the '\n'
     }
 
@@ -965,6 +992,13 @@ void stats_session_destroy(stats_session_t *session) {
     free(session);
 }
 
+// CEV: receives TCP stats, used by 'tcpserver_bind', which is called from 'connect_server'
+// also called by the session in 'tcpsession_recv_callback'
+//
+// TODO (CEV):
+//  * make sure the buffer has sufficient capacity
+//  * make sure we don't grow the buffer too much
+//
 int stats_recv(int sd, void *data, void *ctx) {
     stats_session_t *session = (stats_session_t *)ctx;
 
@@ -987,6 +1021,7 @@ int stats_recv(int sd, void *data, void *ctx) {
         }
     }
 
+    // WARN (CEV): what happens if there is more to read?
     bytes_read = recv(sd, buffer_tail(&session->buffer), space, 0);
     if (bytes_read < 0) {
         stats_log("stats: Error receiving from socket: %s", strerror(errno));

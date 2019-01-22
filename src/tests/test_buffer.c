@@ -22,6 +22,10 @@ void test_basic() {
     assert(buffer_spacecount(&buf) == 4); // 32 - 2*14 = 4
 
     buffer_consume_until(&buf, '\n');
+    if (buffer_datacount(&buf) != len) {
+        fprintf(stderr, "buffer_consume_until: want: %zu got: %zu\n",
+            buffer_datacount(&buf), len);
+    }
     assert(buffer_datacount(&buf) == len);
 
     buffer_consume_until(&buf, '\n');

@@ -59,19 +59,24 @@ void test_map_put_get() {
     char buf[100];
     void *out;
     int j;
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 5000; i++) {
         snprintf((char*)&buf, 100, "test%d", i);
         j = 0 & i;
         out = (void *)&j;
         assert(hashmap_put(map, (char*)buf, out, NULL) == 1);
     }
 
-    for (int i = 0; i < 100; i++) {
+    for (int i = 0; i < 5000; i++) {
         snprintf((char*)&buf, 100, "test%d", i);
         assert(hashmap_get(map, (char*)buf, &out) == 0);
         j = 0 & i;
         int x = *((int*)(out));
         assert(x == j);
+    }
+
+    for (int i = 0; i < 5000; i++) {
+        snprintf((char*)&buf, 100, "tess%d", i);
+        assert(hashmap_get(map, (char*)buf, &out) != 0);
     }
 
     res = hashmap_destroy(map);
