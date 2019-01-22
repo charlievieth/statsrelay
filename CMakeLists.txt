@@ -11,6 +11,11 @@ INCLUDE(CheckLibraryExists)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=gnu99 -O2 -fno-omit-frame-pointer -fno-strict-aliasing -g3")
 
+# Enable a lot of compiler warnings
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -pedantic-errors -Wshadow")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wswitch-enum -Wcast-qual -Wpointer-arith")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wstrict-overflow=5 -Wcast-align")
+
 CHECK_INCLUDE_FILE(malloc.h HAVE_MALLOC_H)
 CHECK_LIBRARY_EXISTS(ev ev_run "" HAVE_LIBEV)
 CHECK_LIBRARY_EXISTS(jansson json_load_file "" HAVE_JANSSON)
